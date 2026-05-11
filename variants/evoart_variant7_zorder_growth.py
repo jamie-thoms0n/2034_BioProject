@@ -217,24 +217,14 @@ def elite_individuals(population, fraction=0.2):
     return sorted(population.individuals, key=lambda individual: individual.fitness, reverse=True)[:count]
 
 
-def make_offspring(elites, use_crossover):
-    if use_crossover and len(elites) > 1 and random.random() < 0.25:
-        parent_a, parent_b = random.sample(elites, 2)
-        child = combine(parent_a.chromosome, parent_b.chromosome)
-        return mutate(child)
-
-    parent = random.choice(elites)
-    return mutate(copy_solution(parent.chromosome))
-
-
 def evolve(population, args):
     original_size = population.intended_size
     elites = elite_individuals(population)
     offspring_count = original_size
-    use_crossover = population.current_best.fitness < 0.70
 
     for _ in range(offspring_count):
-        offspring = make_offspring(elites, use_crossover)
+        parent = random.choice(elites)
+        offspring = mutate(copy_solution(parent.chromosome))
         population.individuals.append(Individual(offspring))
 
     population.generation += 1
