@@ -30,18 +30,24 @@ def clamp(value, low, high):
 def random_shape():
     x0 = random.randint(0, WIDTH - 1)
     y0 = random.randint(0, HEIGHT - 1)
-    x1 = random.randint(0, WIDTH - 1)
-    y1 = random.randint(0, HEIGHT - 1)
-    x2 = random.randint(0, WIDTH - 1)
-    y2 = random.randint(0, HEIGHT - 1)
+    x1 = clamp(x0 + random.randint(-30, 30), 0, WIDTH - 1)
+    y1 = clamp(y0 + random.randint(-30, 30), 0, HEIGHT - 1)
+
+    left, right = sorted((x0, x1))
+    top, bottom = sorted((y0, y1))
+
+    if left == right:
+        right = clamp(left + 1, 0, WIDTH - 1)
+        left, right = sorted((left, right))
+    if top == bottom:
+        bottom = clamp(top + 1, 0, HEIGHT - 1)
+        top, bottom = sorted((top, bottom))
 
     return (
-        x0,
-        y0,
-        x1,
-        y1,
-        x2,
-        y2,
+        left,
+        top,
+        right,
+        bottom,
         random.randint(0, 255),
         random.randint(0, 255),
         random.randint(0, 255),
@@ -58,17 +64,17 @@ def draw(solution):
     image = PIL.Image.new("RGBA", (WIDTH, HEIGHT), (255, 255, 255, 255))
 
     for shape in solution:
-        x0, y0, x1, y1, x2, y2, r, g, b, alpha = shape
+        x0, y0, x1, y1, r, g, b, alpha = shape
         layer = PIL.Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
         canvas = PIL.ImageDraw.Draw(layer, "RGBA")
-        canvas.polygon(((x0, y0), (x1, y1), (x2, y2)), fill=(r, g, b, alpha))
+        canvas.rectangle((x0, y0, x1, y1), fill=(r, g, b, alpha))
         image = PIL.Image.alpha_composite(image, layer)
 
     return image.convert("RGB")
 
 
 def mutate_shape(shape, amount=15):
-    x0, y0, x1, y1, x2, y2, r, g, b, alpha = shape
+    x0, y0, x1, y1, r, g, b, alpha = shape
 
     if random.random() < 0.6:
         x0 = clamp(x0 + random.randint(-amount, amount), 0, WIDTH - 1)
@@ -78,10 +84,15 @@ def mutate_shape(shape, amount=15):
         x1 = clamp(x1 + random.randint(-amount, amount), 0, WIDTH - 1)
     if random.random() < 0.6:
         y1 = clamp(y1 + random.randint(-amount, amount), 0, HEIGHT - 1)
-    if random.random() < 0.6:
-        x2 = clamp(x2 + random.randint(-amount, amount), 0, WIDTH - 1)
-    if random.random() < 0.6:
-        y2 = clamp(y2 + random.randint(-amount, amount), 0, HEIGHT - 1)
+
+    x0, x1 = sorted((x0, x1))
+    y0, y1 = sorted((y0, y1))
+    if x0 == x1:
+        x1 = clamp(x0 + 1, 0, WIDTH - 1)
+        x0, x1 = sorted((x0, x1))
+    if y0 == y1:
+        y1 = clamp(y0 + 1, 0, HEIGHT - 1)
+        y0, y1 = sorted((y0, y1))
 
     if random.random() < 0.6:
         r = clamp(r + random.randint(-amount, amount), 0, 255)
@@ -92,7 +103,7 @@ def mutate_shape(shape, amount=15):
     if random.random() < 0.6:
         alpha = clamp(alpha + random.randint(-10, 10), 10, 160)
 
-    return (x0, y0, x1, y1, x2, y2, r, g, b, alpha)
+    return (x0, y0, x1, y1, r, g, b, alpha)
 
 
 def mutate(solution, rate=0.2):
