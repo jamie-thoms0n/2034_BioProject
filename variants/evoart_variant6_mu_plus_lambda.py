@@ -116,10 +116,12 @@ def mutate_shape(shape, amount=4):
 
 
 def shape_add_probability(shape_count):
-    if shape_count < 30:
-        return 0.45
-    if shape_count <= 70:
-        return 0.2
+    if shape_count < 25:
+        return 0.35
+    if shape_count < 60:
+        return 0.18
+    if shape_count < 90:
+        return 0.08
     return 0.02
 
 
@@ -132,15 +134,6 @@ def move_shape_order(solution):
     shift = random.choice((-3, -2, -1, 1, 2, 3))
     new_index = clamp(old_index + shift, 0, len(solution))
     solution.insert(new_index, shape)
-    return solution
-
-
-def swap_shape_order(solution):
-    if len(solution) < 2:
-        return solution
-
-    first, second = random.sample(range(len(solution)), 2)
-    solution[first], solution[second] = solution[second], solution[first]
     return solution
 
 
@@ -157,11 +150,8 @@ def mutate(solution, rate=1.0):
     if mutated and random.random() < 0.04:
         mutated[random.randrange(len(mutated))] = random_shape()
 
-    if len(mutated) > 1 and random.random() < 0.12:
+    if len(mutated) > 1 and random.random() < 0.08:
         mutated = move_shape_order(mutated)
-
-    if len(mutated) > 1 and random.random() < 0.06:
-        mutated = swap_shape_order(mutated)
 
     if len(mutated) > 1 and random.random() < 0.01:
         del mutated[random.randrange(len(mutated))]
