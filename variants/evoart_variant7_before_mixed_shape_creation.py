@@ -29,23 +29,12 @@ def clamp(value, low, high):
 
 
 def random_shape():
-    centre_x = random.randint(0, WIDTH - 1)
-    centre_y = random.randint(0, HEIGHT - 1)
-    size_type = random.random()
-
-    if size_type < 0.7:
-        radius = random.randint(4, 25)
-    elif size_type < 0.9:
-        radius = random.randint(20, 60)
-    else:
-        radius = random.randint(50, 130)
-
-    x0 = clamp(centre_x + random.randint(-radius, radius), 0, WIDTH - 1)
-    y0 = clamp(centre_y + random.randint(-radius, radius), 0, HEIGHT - 1)
-    x1 = clamp(centre_x + random.randint(-radius, radius), 0, WIDTH - 1)
-    y1 = clamp(centre_y + random.randint(-radius, radius), 0, HEIGHT - 1)
-    x2 = clamp(centre_x + random.randint(-radius, radius), 0, WIDTH - 1)
-    y2 = clamp(centre_y + random.randint(-radius, radius), 0, HEIGHT - 1)
+    x0 = random.randint(0, WIDTH - 1)
+    y0 = random.randint(0, HEIGHT - 1)
+    x1 = random.randint(0, WIDTH - 1)
+    y1 = random.randint(0, HEIGHT - 1)
+    x2 = random.randint(0, WIDTH - 1)
+    y2 = random.randint(0, HEIGHT - 1)
 
     return (
         x0,
@@ -110,21 +99,15 @@ def mutate_shape(shape, amount=4):
         x2 = clamp(x2 + dx, 0, WIDTH - 1)
         y2 = clamp(y2 + dy, 0, HEIGHT - 1)
     elif mutation_type < 0.9:
-        colour_type = random.random()
-        if colour_type < 0.05:
-            r = random.randint(0, 255)
-            g = random.randint(0, 255)
-            b = random.randint(0, 255)
+        colour_amount = 6 if random.random() < 0.9 else 24
+        channel = random.randrange(3)
+        delta = random.randint(-colour_amount, colour_amount)
+        if channel == 0:
+            r = clamp(r + delta, 0, 255)
+        elif channel == 1:
+            g = clamp(g + delta, 0, 255)
         else:
-            colour_amount = 6 if colour_type < 0.85 else 24
-            channel = random.randrange(3)
-            delta = random.randint(-colour_amount, colour_amount)
-            if channel == 0:
-                r = clamp(r + delta, 0, 255)
-            elif channel == 1:
-                g = clamp(g + delta, 0, 255)
-            else:
-                b = clamp(b + delta, 0, 255)
+            b = clamp(b + delta, 0, 255)
     else:
         alpha_amount = 4 if random.random() < 0.9 else 16
         alpha = clamp(alpha + random.randint(-alpha_amount, alpha_amount), 10, 160)
@@ -134,10 +117,10 @@ def mutate_shape(shape, amount=4):
 
 def shape_add_probability(shape_count):
     if shape_count < 30:
-        return 0.25
+        return 0.45
     if shape_count <= 70:
-        return 0.12
-    return 0.03
+        return 0.2
+    return 0.02
 
 
 def move_shape_order(solution):
