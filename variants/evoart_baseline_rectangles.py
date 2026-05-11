@@ -125,22 +125,8 @@ def mutate(solution, rate=0.2):
     return mutated
 
 
-def tournament_pick(population, tournament_size=3):
-    competitors = random.sample(population, min(tournament_size, len(population)))
-    return max(competitors, key=lambda individual: individual.fitness)
-
-
 def select(population):
-    first = tournament_pick(population)
-    second = tournament_pick(population)
-
-    if len(population) > 1:
-        attempts = 0
-        while second is first and attempts < 5:
-            second = tournament_pick(population)
-            attempts += 1
-
-    return first, second
+    return random.sample(population, 2)
 
 
 def combine(parent_a, parent_b):
