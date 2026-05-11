@@ -67,80 +67,51 @@ def draw(solution):
     return image.convert("RGB")
 
 
-def mutate_shape(shape, coord_amount=15, colour_amount=15, alpha_amount=10):
+def mutate_shape(shape, amount=15):
     x0, y0, x1, y1, x2, y2, r, g, b, alpha = shape
 
     if random.random() < 0.6:
-        x0 = clamp(x0 + random.randint(-coord_amount, coord_amount), 0, WIDTH - 1)
+        x0 = clamp(x0 + random.randint(-amount, amount), 0, WIDTH - 1)
     if random.random() < 0.6:
-        y0 = clamp(y0 + random.randint(-coord_amount, coord_amount), 0, HEIGHT - 1)
+        y0 = clamp(y0 + random.randint(-amount, amount), 0, HEIGHT - 1)
     if random.random() < 0.6:
-        x1 = clamp(x1 + random.randint(-coord_amount, coord_amount), 0, WIDTH - 1)
+        x1 = clamp(x1 + random.randint(-amount, amount), 0, WIDTH - 1)
     if random.random() < 0.6:
-        y1 = clamp(y1 + random.randint(-coord_amount, coord_amount), 0, HEIGHT - 1)
+        y1 = clamp(y1 + random.randint(-amount, amount), 0, HEIGHT - 1)
     if random.random() < 0.6:
-        x2 = clamp(x2 + random.randint(-coord_amount, coord_amount), 0, WIDTH - 1)
+        x2 = clamp(x2 + random.randint(-amount, amount), 0, WIDTH - 1)
     if random.random() < 0.6:
-        y2 = clamp(y2 + random.randint(-coord_amount, coord_amount), 0, HEIGHT - 1)
+        y2 = clamp(y2 + random.randint(-amount, amount), 0, HEIGHT - 1)
 
     if random.random() < 0.6:
-        r = clamp(r + random.randint(-colour_amount, colour_amount), 0, 255)
+        r = clamp(r + random.randint(-amount, amount), 0, 255)
     if random.random() < 0.6:
-        g = clamp(g + random.randint(-colour_amount, colour_amount), 0, 255)
+        g = clamp(g + random.randint(-amount, amount), 0, 255)
     if random.random() < 0.6:
-        b = clamp(b + random.randint(-colour_amount, colour_amount), 0, 255)
+        b = clamp(b + random.randint(-amount, amount), 0, 255)
     if random.random() < 0.6:
-        alpha = clamp(alpha + random.randint(-alpha_amount, alpha_amount), 10, 160)
+        alpha = clamp(alpha + random.randint(-10, 10), 10, 160)
 
     return (x0, y0, x1, y1, x2, y2, r, g, b, alpha)
 
 
-def mutate(
-    solution,
-    rate=0.2,
-    coord_amount=15,
-    colour_amount=15,
-    alpha_amount=10,
-    add_rate=0.15,
-    remove_rate=0.05,
-):
+def mutate(solution, rate=0.2):
     mutated = list(solution)
 
     for index, shape in enumerate(mutated):
         if random.random() < rate:
-            mutated[index] = mutate_shape(shape, coord_amount, colour_amount, alpha_amount)
+            mutated[index] = mutate_shape(shape)
 
-    if len(mutated) < MAX_SHAPES and random.random() < add_rate:
+    if len(mutated) < MAX_SHAPES and random.random() < 0.15:
         mutated.append(random_shape())
 
-    if len(mutated) > 1 and random.random() < remove_rate:
+    if len(mutated) > 1 and random.random() < 0.05:
         del mutated[random.randrange(len(mutated))]
 
     if not mutated:
         mutated.append(random_shape())
 
     return mutated
-
-
-def mutation_settings(best_fitness):
-    if best_fitness < 0.65:
-        return {
-            "rate": 0.3,
-            "coord_amount": 25,
-            "colour_amount": 25,
-            "alpha_amount": 15,
-            "add_rate": 0.25,
-            "remove_rate": 0.05,
-        }
-
-    return {
-        "rate": 0.18,
-        "coord_amount": 6,
-        "colour_amount": 8,
-        "alpha_amount": 5,
-        "add_rate": 0.04,
-        "remove_rate": 0.02,
-    }
 
 
 def tournament_pick(population, tournament_size=3):
@@ -180,10 +151,9 @@ def combine(parent_a, parent_b):
 
 
 def evolve(population, args):
-    settings = mutation_settings(population.current_best.fitness)
     return (
         population.survive(fraction=0.4)
         .breed(select, combine)
-        .mutate(mutate, probability=0.8, **settings)
+        .mutate(mutate, probability=0.8, rate=0.25)
         .evaluate()
     )
