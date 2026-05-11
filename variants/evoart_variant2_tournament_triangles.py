@@ -12,7 +12,6 @@ This file provides the three functions imported by the coursework runner:
 import random
 
 import evol
-from evol.individual import Individual
 import PIL.Image
 import PIL.ImageDraw
 
@@ -116,11 +115,7 @@ def mutate(solution, rate=0.2):
 
 
 def tournament_pick(population, tournament_size=3):
-    individuals = population.individuals if hasattr(population, "individuals") else population
-    evaluated = [individual for individual in individuals if individual.fitness is not None]
-    if evaluated:
-        individuals = evaluated
-    competitors = random.sample(individuals, min(tournament_size, len(individuals)))
+    competitors = random.sample(population, min(tournament_size, len(population)))
     return max(competitors, key=lambda individual: individual.fitness)
 
 
@@ -155,42 +150,10 @@ def combine(parent_a, parent_b):
     return child
 
 
-def copy_solution(solution):
-    return list(solution)
-
-
-def replacement_rates(best_fitness):
-    if best_fitness < 0.65:
-        return 0.6, 0.35
-    return 0.1, 0.75
-
-
-def make_offspring(population):
-    best_fitness = population.current_best.fitness
-    crossover_rate, mutation_rate = replacement_rates(best_fitness)
-    choice = random.random()
-
-    if choice < crossover_rate:
-        parent_a, parent_b = select(population)
-        return Individual(combine(parent_a.chromosome, parent_b.chromosome))
-
-    if choice < crossover_rate + mutation_rate:
-        parent = tournament_pick(population)
-        return Individual(mutate(parent.chromosome, rate=0.25))
-
-    parent = tournament_pick(population)
-    return Individual(copy_solution(parent.chromosome), fitness=parent.fitness)
-
-
-def replace(population):
-    intended_size = population.intended_size
-
-    while len(population.individuals) < intended_size:
-        population.individuals.append(make_offspring(population))
-
-    population.generation += 1
-    return population
-
-
 def evolve(population, args):
-    return replace(population.survive(fraction=0.4)).evaluate()
+    return (
+        population.survive(fraction=0.4)
+        .breed(select, combine)
+        .mutate(mutate, probability=0.8, rate=0.25)
+        .evaluate()
+    )
