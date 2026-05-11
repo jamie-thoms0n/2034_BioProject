@@ -5,3 +5,4 @@ venv/
 outputs/
 logs/
 .DS_Store
+PROJECT_LOG.md

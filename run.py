@@ -35,7 +35,7 @@ import multiprocessing
 import evol
 import numpy
 import PIL.Image
-import PIL.ImageChops
+from PIL import ImageChops
 
 from pathlib import Path
 from docopt import docopt
