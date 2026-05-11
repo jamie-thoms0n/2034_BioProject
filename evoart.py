@@ -12,6 +12,7 @@ This file provides the three functions imported by the coursework runner:
 import random
 
 import evol
+from evol.individual import Individual
 import PIL.Image
 import PIL.ImageDraw
 
@@ -67,80 +68,98 @@ def draw(solution):
     return image.convert("RGB")
 
 
-def mutate_shape(shape, coord_amount=15, colour_amount=15, alpha_amount=10):
+def mutate_shape(shape, amount=4):
     x0, y0, x1, y1, x2, y2, r, g, b, alpha = shape
 
-    if random.random() < 0.6:
-        x0 = clamp(x0 + random.randint(-coord_amount, coord_amount), 0, WIDTH - 1)
-    if random.random() < 0.6:
-        y0 = clamp(y0 + random.randint(-coord_amount, coord_amount), 0, HEIGHT - 1)
-    if random.random() < 0.6:
-        x1 = clamp(x1 + random.randint(-coord_amount, coord_amount), 0, WIDTH - 1)
-    if random.random() < 0.6:
-        y1 = clamp(y1 + random.randint(-coord_amount, coord_amount), 0, HEIGHT - 1)
-    if random.random() < 0.6:
-        x2 = clamp(x2 + random.randint(-coord_amount, coord_amount), 0, WIDTH - 1)
-    if random.random() < 0.6:
-        y2 = clamp(y2 + random.randint(-coord_amount, coord_amount), 0, HEIGHT - 1)
+    if random.random() < 0.08:
+        amount *= 4
 
-    if random.random() < 0.6:
-        r = clamp(r + random.randint(-colour_amount, colour_amount), 0, 255)
-    if random.random() < 0.6:
-        g = clamp(g + random.randint(-colour_amount, colour_amount), 0, 255)
-    if random.random() < 0.6:
-        b = clamp(b + random.randint(-colour_amount, colour_amount), 0, 255)
-    if random.random() < 0.6:
+    mutation_type = random.random()
+
+    if mutation_type < 0.4:
+        vertex = random.randrange(3)
+        dx = random.randint(-amount, amount)
+        dy = random.randint(-amount, amount)
+        if vertex == 0:
+            x0 = clamp(x0 + dx, 0, WIDTH - 1)
+            y0 = clamp(y0 + dy, 0, HEIGHT - 1)
+        elif vertex == 1:
+            x1 = clamp(x1 + dx, 0, WIDTH - 1)
+            y1 = clamp(y1 + dy, 0, HEIGHT - 1)
+        else:
+            x2 = clamp(x2 + dx, 0, WIDTH - 1)
+            y2 = clamp(y2 + dy, 0, HEIGHT - 1)
+    elif mutation_type < 0.65:
+        dx = random.randint(-amount, amount)
+        dy = random.randint(-amount, amount)
+        x0 = clamp(x0 + dx, 0, WIDTH - 1)
+        y0 = clamp(y0 + dy, 0, HEIGHT - 1)
+        x1 = clamp(x1 + dx, 0, WIDTH - 1)
+        y1 = clamp(y1 + dy, 0, HEIGHT - 1)
+        x2 = clamp(x2 + dx, 0, WIDTH - 1)
+        y2 = clamp(y2 + dy, 0, HEIGHT - 1)
+    elif mutation_type < 0.9:
+        colour_amount = 6 if random.random() < 0.9 else 24
+        channel = random.randrange(3)
+        delta = random.randint(-colour_amount, colour_amount)
+        if channel == 0:
+            r = clamp(r + delta, 0, 255)
+        elif channel == 1:
+            g = clamp(g + delta, 0, 255)
+        else:
+            b = clamp(b + delta, 0, 255)
+    else:
+        alpha_amount = 4 if random.random() < 0.9 else 16
         alpha = clamp(alpha + random.randint(-alpha_amount, alpha_amount), 10, 160)
 
     return (x0, y0, x1, y1, x2, y2, r, g, b, alpha)
 
 
-def mutate(
-    solution,
-    rate=0.2,
-    coord_amount=15,
-    colour_amount=15,
-    alpha_amount=10,
-    add_rate=0.15,
-    remove_rate=0.05,
-):
+def shape_add_probability(shape_count):
+    if shape_count < 25:
+        return 0.35
+    if shape_count < 60:
+        return 0.18
+    if shape_count < 90:
+        return 0.08
+    return 0.02
+
+
+def move_shape_order(solution):
+    if len(solution) < 2:
+        return solution
+
+    old_index = random.randrange(len(solution))
+    shape = solution.pop(old_index)
+    shift = random.choice((-3, -2, -1, 1, 2, 3))
+    new_index = clamp(old_index + shift, 0, len(solution))
+    solution.insert(new_index, shape)
+    return solution
+
+
+def mutate(solution, rate=1.0):
     mutated = list(solution)
 
-    for index, shape in enumerate(mutated):
-        if random.random() < rate:
-            mutated[index] = mutate_shape(shape, coord_amount, colour_amount, alpha_amount)
+    if mutated and random.random() < rate:
+        index = random.randrange(len(mutated))
+        mutated[index] = mutate_shape(mutated[index])
 
-    if len(mutated) < MAX_SHAPES and random.random() < add_rate:
+    if len(mutated) < MAX_SHAPES and random.random() < shape_add_probability(len(mutated)):
         mutated.append(random_shape())
 
-    if len(mutated) > 1 and random.random() < remove_rate:
+    if mutated and random.random() < 0.04:
+        mutated[random.randrange(len(mutated))] = random_shape()
+
+    if len(mutated) > 1 and random.random() < 0.08:
+        mutated = move_shape_order(mutated)
+
+    if len(mutated) > 1 and random.random() < 0.01:
         del mutated[random.randrange(len(mutated))]
 
     if not mutated:
         mutated.append(random_shape())
 
     return mutated
-
-
-def mutation_settings(best_fitness):
-    if best_fitness < 0.65:
-        return {
-            "rate": 0.3,
-            "coord_amount": 25,
-            "colour_amount": 25,
-            "alpha_amount": 15,
-            "add_rate": 0.25,
-            "remove_rate": 0.05,
-        }
-
-    return {
-        "rate": 0.18,
-        "coord_amount": 6,
-        "colour_amount": 8,
-        "alpha_amount": 5,
-        "add_rate": 0.04,
-        "remove_rate": 0.02,
-    }
 
 
 def tournament_pick(population, tournament_size=3):
@@ -179,11 +198,24 @@ def combine(parent_a, parent_b):
     return child
 
 
+def copy_solution(solution):
+    return list(solution)
+
+
+def elite_individuals(population, fraction=0.2):
+    count = max(1, round(len(population.individuals) * fraction))
+    return sorted(population.individuals, key=lambda individual: individual.fitness, reverse=True)[:count]
+
+
 def evolve(population, args):
-    settings = mutation_settings(population.current_best.fitness)
-    return (
-        population.survive(fraction=0.4)
-        .breed(select, combine)
-        .mutate(mutate, probability=0.8, **settings)
-        .evaluate()
-    )
+    original_size = population.intended_size
+    elites = elite_individuals(population)
+    offspring_count = original_size
+
+    for _ in range(offspring_count):
+        parent = random.choice(elites)
+        offspring = mutate(copy_solution(parent.chromosome))
+        population.individuals.append(Individual(offspring))
+
+    population.generation += 1
+    return population.evaluate(lazy=True).survive(n=original_size)
