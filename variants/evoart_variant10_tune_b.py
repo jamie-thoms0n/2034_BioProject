@@ -225,37 +225,6 @@ def combine(parent_a, parent_b):
     return child
 
 
-def shape_centre(shape):
-    x0, y0, x1, y1, x2, y2 = shape[:6]
-    return (x0 + x1 + x2) / 3, (y0 + y1 + y2) / 3
-
-
-def regional_combine(parent_a, parent_b):
-    vertical = random.random() < 0.5
-    split = random.randint(60, 140)
-    take_left_or_top = random.random() < 0.5
-    child = []
-
-    for shape in parent_a:
-        centre_x, centre_y = shape_centre(shape)
-        value = centre_x if vertical else centre_y
-        if (value < split) == take_left_or_top:
-            child.append(shape)
-
-    for shape in parent_b:
-        centre_x, centre_y = shape_centre(shape)
-        value = centre_x if vertical else centre_y
-        if (value >= split) == take_left_or_top:
-            child.append(shape)
-
-    if len(child) > MAX_SHAPES:
-        child = child[:MAX_SHAPES]
-    if not child:
-        child.append(random_shape())
-
-    return child
-
-
 def copy_solution(solution):
     return list(solution)
 
@@ -268,16 +237,11 @@ def elite_individuals(population, fraction=0.1):
 def evolve(population, args):
     original_size = population.intended_size
     elites = elite_individuals(population)
-    offspring_count = original_size * 2
+    offspring_count = original_size * 3
 
     for _ in range(offspring_count):
-        if len(elites) > 1 and random.random() < 0.2:
-            parent_a, parent_b = random.sample(elites, 2)
-            child = regional_combine(parent_a.chromosome, parent_b.chromosome)
-            offspring = mutate(child)
-        else:
-            parent = random.choice(elites)
-            offspring = mutate(copy_solution(parent.chromosome))
+        parent = random.choice(elites)
+        offspring = mutate(copy_solution(parent.chromosome))
         population.individuals.append(Individual(offspring))
 
     population.generation += 1
