@@ -28,41 +28,6 @@ def clamp(value, low, high):
     return max(low, min(high, value))
 
 
-def random_colour():
-    colour_type = random.random()
-
-    if colour_type < 0.45:
-        grey = random.choice(
-            (
-                random.randint(0, 35),
-                random.randint(220, 255),
-                random.randint(55, 190),
-            )
-        )
-        return grey, grey, grey
-
-    if colour_type < 0.75:
-        base_colours = (
-            (205, 35, 24),
-            (35, 95, 175),
-            (230, 190, 35),
-            (35, 150, 75),
-            (145, 55, 150),
-        )
-        r, g, b = random.choice(base_colours)
-        return (
-            clamp(r + random.randint(-35, 35), 0, 255),
-            clamp(g + random.randint(-35, 35), 0, 255),
-            clamp(b + random.randint(-35, 35), 0, 255),
-        )
-
-    return (
-        random.randint(0, 255),
-        random.randint(0, 255),
-        random.randint(0, 255),
-    )
-
-
 def random_shape(detail_mode=False):
     centre_x = random.randint(0, WIDTH - 1)
     centre_y = random.randint(0, HEIGHT - 1)
@@ -88,8 +53,6 @@ def random_shape(detail_mode=False):
     x2 = clamp(centre_x + random.randint(-radius, radius), 0, WIDTH - 1)
     y2 = clamp(centre_y + random.randint(-radius, radius), 0, HEIGHT - 1)
 
-    r, g, b = random_colour()
-
     return (
         x0,
         y0,
@@ -97,9 +60,9 @@ def random_shape(detail_mode=False):
         y1,
         x2,
         y2,
-        r,
-        g,
-        b,
+        random.randint(0, 255),
+        random.randint(0, 255),
+        random.randint(0, 255),
         random.randint(30, 160),
     )
 
@@ -162,7 +125,9 @@ def mutate_shape(shape, amount=6, detail_mode=False):
         all_channel_chance = 0.45 if detail_mode else 0.2
 
         if colour_type < full_recolour_chance:
-            r, g, b = random_colour()
+            r = random.randint(0, 255)
+            g = random.randint(0, 255)
+            b = random.randint(0, 255)
 
         elif colour_type < all_channel_chance:
             colour_step = 4 if detail_mode else 5
@@ -237,9 +202,9 @@ def replace_worst_shape(solution, detail_mode=False):
 
 def mutation_count_for_fitness(fitness):
     if fitness >= 0.92:
-        return random.choices([1, 2, 3], weights=[0.5, 0.35, 0.15])[0]
+        return random.choices([1, 2, 3], weights=[0.85, 0.13, 0.02])[0]
     if fitness >= 0.87:
-        return random.choices([1, 2], weights=[0.7, 0.3])[0]
+        return random.choices([1, 2], weights=[0.82, 0.18])[0]
     return 1
 
 
@@ -382,9 +347,9 @@ def detail_mode_for_parent(parent, population):
 
 def deletion_probability_for_parent(parent):
     if parent.fitness >= 0.90:
-        return 0.07
+        return 0.015
     if parent.fitness >= 0.85:
-        return 0.04
+        return 0.025
     return 0.01
 
 
