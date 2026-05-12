@@ -28,17 +28,29 @@ def clamp(value, low, high):
     return max(low, min(high, value))
 
 
-def random_shape():
-    centre_x = random.randint(0, WIDTH - 1)
-    centre_y = random.randint(0, HEIGHT - 1)
+def random_radius():
     size_type = random.random()
 
-    if size_type < 0.75:
-        radius = random.randint(3, 18)
-    elif size_type < 0.95:
-        radius = random.randint(15, 40)
-    else:
-        radius = random.randint(35, 90)
+    if size_type < 0.7:
+        return random.randint(4, 25)
+    if size_type < 0.9:
+        return random.randint(20, 60)
+    return random.randint(50, 130)
+
+
+def random_colour():
+    return (
+        random.randint(0, 255),
+        random.randint(0, 255),
+        random.randint(0, 255),
+        random.randint(30, 160),
+    )
+
+
+def random_triangle():
+    centre_x = random.randint(0, WIDTH - 1)
+    centre_y = random.randint(0, HEIGHT - 1)
+    radius = random_radius()
 
     x0 = clamp(centre_x + random.randint(-radius, radius), 0, WIDTH - 1)
     y0 = clamp(centre_y + random.randint(-radius, radius), 0, HEIGHT - 1)
@@ -48,17 +60,89 @@ def random_shape():
     y2 = clamp(centre_y + random.randint(-radius, radius), 0, HEIGHT - 1)
 
     return (
+        "triangle",
         x0,
         y0,
         x1,
         y1,
         x2,
         y2,
-        random.randint(0, 255),
-        random.randint(0, 255),
-        random.randint(0, 255),
-        random.randint(30, 160),
+        *random_colour(),
     )
+
+
+def random_ellipse():
+    centre_x = random.randint(0, WIDTH - 1)
+    centre_y = random.randint(0, HEIGHT - 1)
+    radius = random_radius()
+    rx = random.randint(max(2, radius // 3), radius)
+    ry = random.randint(max(2, radius // 3), radius)
+    x0 = clamp(centre_x - rx, 0, WIDTH - 1)
+    y0 = clamp(centre_y - ry, 0, HEIGHT - 1)
+    x1 = clamp(centre_x + rx, 0, WIDTH - 1)
+    y1 = clamp(centre_y + ry, 0, HEIGHT - 1)
+
+    return (
+        "ellipse",
+        x0,
+        y0,
+        x1,
+        y1,
+        *random_colour(),
+    )
+
+
+def random_line():
+    centre_x = random.randint(0, WIDTH - 1)
+    centre_y = random.randint(0, HEIGHT - 1)
+    radius = random_radius()
+    x0 = clamp(centre_x + random.randint(-radius, radius), 0, WIDTH - 1)
+    y0 = clamp(centre_y + random.randint(-radius, radius), 0, HEIGHT - 1)
+    x1 = clamp(centre_x + random.randint(-radius, radius), 0, WIDTH - 1)
+    y1 = clamp(centre_y + random.randint(-radius, radius), 0, HEIGHT - 1)
+    width = random.randint(1, 8)
+
+    return (
+        "line",
+        x0,
+        y0,
+        x1,
+        y1,
+        width,
+        *random_colour(),
+    )
+
+
+def evolution_stage(best_fitness):
+    if best_fitness < 0.75:
+        return "early"
+    if best_fitness < 0.85:
+        return "middle"
+    return "late"
+
+
+def random_shape(stage="early"):
+    shape_type = random.random()
+
+    if stage == "late":
+        if shape_type < 0.7:
+            return random_triangle()
+        if shape_type < 0.75:
+            return random_ellipse()
+        return random_line()
+
+    if stage == "middle":
+        if shape_type < 0.6:
+            return random_triangle()
+        if shape_type < 0.8:
+            return random_ellipse()
+        return random_line()
+
+    if shape_type < 0.5:
+        return random_triangle()
+    if shape_type < 0.85:
+        return random_ellipse()
+    return random_line()
 
 
 def initialise():
@@ -70,21 +154,66 @@ def draw(solution):
     image = PIL.Image.new("RGBA", (WIDTH, HEIGHT), (255, 255, 255, 255))
 
     for shape in solution:
-        x0, y0, x1, y1, x2, y2, r, g, b, alpha = shape
+        shape_type = shape[0]
         layer = PIL.Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
         canvas = PIL.ImageDraw.Draw(layer, "RGBA")
-        canvas.polygon(((x0, y0), (x1, y1), (x2, y2)), fill=(r, g, b, alpha))
+        if shape_type == "triangle":
+            _, x0, y0, x1, y1, x2, y2, r, g, b, alpha = shape
+            canvas.polygon(((x0, y0), (x1, y1), (x2, y2)), fill=(r, g, b, alpha))
+        elif shape_type == "ellipse":
+            _, x0, y0, x1, y1, r, g, b, alpha = shape
+            canvas.ellipse((x0, y0, x1, y1), fill=(r, g, b, alpha))
+        elif shape_type == "line":
+            _, x0, y0, x1, y1, width, r, g, b, alpha = shape
+            canvas.line((x0, y0, x1, y1), fill=(r, g, b, alpha), width=width)
         image = PIL.Image.alpha_composite(image, layer)
 
     return image.convert("RGB")
 
 
-def mutate_shape(shape, amount=6):
-    x0, y0, x1, y1, x2, y2, r, g, b, alpha = shape
+def mutation_amount(stage):
+    if stage == "early":
+        return 8
+    if stage == "middle":
+        return 6
+    return 3
 
-    if random.random() < 0.08:
-        amount *= 4
 
+def mutate_colour(r, g, b, stage):
+    colour_type = random.random()
+    if colour_type < 0.05:
+        return random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)
+
+    if stage == "late":
+        colour_amount = 4 if colour_type < 0.9 else 12
+    elif stage == "middle":
+        colour_amount = 6 if colour_type < 0.85 else 24
+    else:
+        colour_amount = 8 if colour_type < 0.8 else 32
+
+    channel = random.randrange(3)
+    delta = random.randint(-colour_amount, colour_amount)
+    if channel == 0:
+        r = clamp(r + delta, 0, 255)
+    elif channel == 1:
+        g = clamp(g + delta, 0, 255)
+    else:
+        b = clamp(b + delta, 0, 255)
+    return r, g, b
+
+
+def mutate_alpha(alpha, stage):
+    if stage == "late":
+        alpha_amount = 3 if random.random() < 0.9 else 8
+    elif stage == "middle":
+        alpha_amount = 4 if random.random() < 0.9 else 16
+    else:
+        alpha_amount = 6 if random.random() < 0.85 else 20
+    return clamp(alpha + random.randint(-alpha_amount, alpha_amount), 10, 160)
+
+
+def mutate_triangle(shape, amount, stage):
+    _, x0, y0, x1, y1, x2, y2, r, g, b, alpha = shape
     mutation_type = random.random()
 
     if mutation_type < 0.4:
@@ -110,26 +239,94 @@ def mutate_shape(shape, amount=6):
         x2 = clamp(x2 + dx, 0, WIDTH - 1)
         y2 = clamp(y2 + dy, 0, HEIGHT - 1)
     elif mutation_type < 0.9:
-        colour_type = random.random()
-        if colour_type < 0.05:
-            r = random.randint(0, 255)
-            g = random.randint(0, 255)
-            b = random.randint(0, 255)
-        else:
-            colour_amount = 6 if colour_type < 0.85 else 24
-            channel = random.randrange(3)
-            delta = random.randint(-colour_amount, colour_amount)
-            if channel == 0:
-                r = clamp(r + delta, 0, 255)
-            elif channel == 1:
-                g = clamp(g + delta, 0, 255)
-            else:
-                b = clamp(b + delta, 0, 255)
+        r, g, b = mutate_colour(r, g, b, stage)
     else:
-        alpha_amount = 4 if random.random() < 0.9 else 16
-        alpha = clamp(alpha + random.randint(-alpha_amount, alpha_amount), 10, 160)
+        alpha = mutate_alpha(alpha, stage)
 
-    return (x0, y0, x1, y1, x2, y2, r, g, b, alpha)
+    return ("triangle", x0, y0, x1, y1, x2, y2, r, g, b, alpha)
+
+
+def mutate_ellipse(shape, amount, stage):
+    _, x0, y0, x1, y1, r, g, b, alpha = shape
+    mutation_type = random.random()
+
+    if mutation_type < 0.35:
+        dx = random.randint(-amount, amount)
+        dy = random.randint(-amount, amount)
+        x0 = clamp(x0 + dx, 0, WIDTH - 1)
+        y0 = clamp(y0 + dy, 0, HEIGHT - 1)
+        x1 = clamp(x1 + dx, 0, WIDTH - 1)
+        y1 = clamp(y1 + dy, 0, HEIGHT - 1)
+    elif mutation_type < 0.65:
+        edge = random.randrange(4)
+        delta = random.randint(-amount, amount)
+        if edge == 0:
+            x0 = clamp(x0 + delta, 0, WIDTH - 1)
+        elif edge == 1:
+            y0 = clamp(y0 + delta, 0, HEIGHT - 1)
+        elif edge == 2:
+            x1 = clamp(x1 + delta, 0, WIDTH - 1)
+        else:
+            y1 = clamp(y1 + delta, 0, HEIGHT - 1)
+    elif mutation_type < 0.9:
+        r, g, b = mutate_colour(r, g, b, stage)
+    else:
+        alpha = mutate_alpha(alpha, stage)
+
+    x0, x1 = sorted((x0, x1))
+    y0, y1 = sorted((y0, y1))
+    if x0 == x1:
+        x1 = clamp(x0 + 1, 0, WIDTH - 1)
+        x0, x1 = sorted((x0, x1))
+    if y0 == y1:
+        y1 = clamp(y0 + 1, 0, HEIGHT - 1)
+        y0, y1 = sorted((y0, y1))
+
+    return ("ellipse", x0, y0, x1, y1, r, g, b, alpha)
+
+
+def mutate_line(shape, amount, stage):
+    _, x0, y0, x1, y1, width, r, g, b, alpha = shape
+    mutation_type = random.random()
+
+    if mutation_type < 0.35:
+        if random.random() < 0.5:
+            x0 = clamp(x0 + random.randint(-amount, amount), 0, WIDTH - 1)
+            y0 = clamp(y0 + random.randint(-amount, amount), 0, HEIGHT - 1)
+        else:
+            x1 = clamp(x1 + random.randint(-amount, amount), 0, WIDTH - 1)
+            y1 = clamp(y1 + random.randint(-amount, amount), 0, HEIGHT - 1)
+    elif mutation_type < 0.55:
+        dx = random.randint(-amount, amount)
+        dy = random.randint(-amount, amount)
+        x0 = clamp(x0 + dx, 0, WIDTH - 1)
+        y0 = clamp(y0 + dy, 0, HEIGHT - 1)
+        x1 = clamp(x1 + dx, 0, WIDTH - 1)
+        y1 = clamp(y1 + dy, 0, HEIGHT - 1)
+    elif mutation_type < 0.7:
+        width = clamp(width + random.choice((-1, 1)), 1, 8)
+    elif mutation_type < 0.92:
+        r, g, b = mutate_colour(r, g, b, stage)
+    else:
+        alpha = mutate_alpha(alpha, stage)
+
+    return ("line", x0, y0, x1, y1, width, r, g, b, alpha)
+
+
+def mutate_shape(shape, stage="early"):
+    amount = mutation_amount(stage)
+    jump_chance = 0.1 if stage == "early" else 0.08 if stage == "middle" else 0.02
+    if random.random() < jump_chance:
+        amount *= 4
+
+    shape_type = shape[0]
+    if shape_type == "triangle":
+        return mutate_triangle(shape, amount, stage)
+    if shape_type == "ellipse":
+        return mutate_ellipse(shape, amount, stage)
+    if shape_type == "line":
+        return mutate_line(shape, amount, stage)
+    return random_shape(stage)
 
 
 def shape_add_probability(shape_count):
@@ -161,18 +358,20 @@ def swap_shape_order(solution):
     return solution
 
 
-def mutate(solution, rate=1.0):
+def mutate(solution, rate=1.0, stage="early"):
     mutated = list(solution)
 
     if mutated and random.random() < rate:
         index = random.randrange(len(mutated))
-        mutated[index] = mutate_shape(mutated[index])
+        mutated[index] = mutate_shape(mutated[index], stage)
 
     if len(mutated) < MAX_SHAPES and random.random() < shape_add_probability(len(mutated)):
-        mutated.append(random_shape())
+        mutated.append(random_shape(stage))
 
     if mutated and random.random() < 0.04:
-        mutated[random.randrange(len(mutated))] = random_shape()
+        replace_rate = 0.02 if stage == "late" else 0.04
+        if random.random() < replace_rate / 0.04:
+            mutated[random.randrange(len(mutated))] = random_shape(stage)
 
     if len(mutated) > 1 and random.random() < 0.12:
         mutated = move_shape_order(mutated)
@@ -238,10 +437,11 @@ def evolve(population, args):
     original_size = population.intended_size
     elites = elite_individuals(population)
     offspring_count = original_size * 2
+    stage = evolution_stage(population.current_best.fitness)
 
     for _ in range(offspring_count):
         parent = random.choice(elites)
-        offspring = mutate(copy_solution(parent.chromosome))
+        offspring = mutate(copy_solution(parent.chromosome), stage=stage)
         population.individuals.append(Individual(offspring))
 
     population.generation += 1
