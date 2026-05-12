@@ -28,23 +28,17 @@ def clamp(value, low, high):
     return max(low, min(high, value))
 
 
-def random_shape(detail_mode=False):
+def random_shape():
     centre_x = random.randint(0, WIDTH - 1)
     centre_y = random.randint(0, HEIGHT - 1)
+    size_type = random.random()
 
-    if detail_mode:
-        if random.random() < 0.65:
-            radius = random.randint(3, 16)
-        else:
-            radius = random.randint(12, 32)
+    if size_type < 0.7:
+        radius = random.randint(4, 25)
+    elif size_type < 0.9:
+        radius = random.randint(20, 60)
     else:
-        size_type = random.random()
-        if size_type < 0.7:
-            radius = random.randint(4, 25)
-        elif size_type < 0.9:
-            radius = random.randint(20, 60)
-        else:
-            radius = random.randint(50, 130)
+        radius = random.randint(50, 130)
 
     x0 = clamp(centre_x + random.randint(-radius, radius), 0, WIDTH - 1)
     y0 = clamp(centre_y + random.randint(-radius, radius), 0, HEIGHT - 1)
@@ -85,7 +79,7 @@ def draw(solution):
     return image.convert("RGB")
 
 
-def mutate_shape(shape, amount=6, detail_mode=False):
+def mutate_shape(shape, amount=6):
     x0, y0, x1, y1, x2, y2, r, g, b, alpha = shape
 
     if random.random() < 0.08:
@@ -117,22 +111,16 @@ def mutate_shape(shape, amount=6, detail_mode=False):
         y2 = clamp(y2 + dy, 0, HEIGHT - 1)
     elif mutation_type < 0.9:
         colour_type = random.random()
-        full_recolour_chance = 0.01 if detail_mode else 0.05
-        all_channel_chance = 0.45 if detail_mode else 0.2
-        if colour_type < full_recolour_chance:
+        if colour_type < 0.05:
             r = random.randint(0, 255)
             g = random.randint(0, 255)
             b = random.randint(0, 255)
-        elif colour_type < all_channel_chance:
-            colour_step = 4 if detail_mode else 5
-            r = clamp(r + random.randint(-colour_step, colour_step), 0, 255)
-            g = clamp(g + random.randint(-colour_step, colour_step), 0, 255)
-            b = clamp(b + random.randint(-colour_step, colour_step), 0, 255)
+        elif colour_type < 0.2:
+            r = clamp(r + random.randint(-5, 5), 0, 255)
+            g = clamp(g + random.randint(-5, 5), 0, 255)
+            b = clamp(b + random.randint(-5, 5), 0, 255)
         else:
-            if detail_mode:
-                colour_amount = 4 if colour_type < 0.9 else 10
-            else:
-                colour_amount = 6 if colour_type < 0.85 else 24
+            colour_amount = 6 if colour_type < 0.85 else 24
             channel = random.randrange(3)
             delta = random.randint(-colour_amount, colour_amount)
             if channel == 0:
@@ -184,34 +172,31 @@ def mutate(
     deletion_probability=0.01,
     add_multiplier=1.0,
     replacement_probability=0.04,
-    detail_mode=False,
-    z_move_probability=0.12,
-    z_swap_probability=0.06,
 ):
     mutated = list(solution)
 
     if mutated and random.random() < rate:
         index = random.randrange(len(mutated))
-        mutated[index] = mutate_shape(mutated[index], amount=amount, detail_mode=detail_mode)
+        mutated[index] = mutate_shape(mutated[index], amount=amount)
 
     add_probability = min(1.0, shape_add_probability(len(mutated)) * add_multiplier)
     if len(mutated) < MAX_SHAPES and random.random() < add_probability:
-        mutated.append(random_shape(detail_mode=detail_mode))
+        mutated.append(random_shape())
 
     if mutated and random.random() < replacement_probability:
-        mutated[random.randrange(len(mutated))] = random_shape(detail_mode=detail_mode)
+        mutated[random.randrange(len(mutated))] = random_shape()
 
-    if len(mutated) > 1 and random.random() < z_move_probability:
+    if len(mutated) > 1 and random.random() < 0.12:
         mutated = move_shape_order(mutated)
 
-    if len(mutated) > 1 and random.random() < z_swap_probability:
+    if len(mutated) > 1 and random.random() < 0.06:
         mutated = swap_shape_order(mutated)
 
     if len(mutated) > 1 and random.random() < deletion_probability:
         del mutated[random.randrange(len(mutated))]
 
     if not mutated:
-        mutated.append(random_shape(detail_mode=detail_mode))
+        mutated.append(random_shape())
 
     return mutated
 
@@ -270,19 +255,7 @@ def mutation_amount_for_parent(parent):
         return 10
     if parent.fitness < 0.87:
         return 7
-    if parent.fitness < 0.90:
-        return 4
-    return 3
-
-
-def replacement_probability_for_parent(parent):
-    if parent.fitness >= 0.90:
-        return 0.01
-    return 0.04
-
-
-def detail_mode_for_parent(parent, population):
-    return parent.fitness >= 0.90 or population.current_best.fitness >= 0.90
+    return 4
 
 
 def deletion_probability_for_parent(parent):
@@ -328,15 +301,11 @@ def evolve(population, args):
         parent = choose_parent(elites, population)
         amount = mutation_amount_for_parent(parent)
         add_multiplier = 1.0
-        detail_mode = detail_mode_for_parent(parent, population)
-        replacement_probability = replacement_probability_for_parent(parent)
-        z_move_probability = 0.14 if detail_mode else 0.12
-        z_swap_probability = 0.08 if detail_mode else 0.06
+        replacement_probability = 0.04
         if boost:
             amount += 2
             add_multiplier = 1.25
-            if not detail_mode:
-                replacement_probability = 0.06
+            replacement_probability = 0.06
         deletion_probability = deletion_probability_for_parent(parent)
         offspring = mutate(
             copy_solution(parent.chromosome),
@@ -344,9 +313,6 @@ def evolve(population, args):
             deletion_probability=deletion_probability,
             add_multiplier=add_multiplier,
             replacement_probability=replacement_probability,
-            detail_mode=detail_mode,
-            z_move_probability=z_move_probability,
-            z_swap_probability=z_swap_probability,
         )
         population.individuals.append(Individual(offspring))
 
