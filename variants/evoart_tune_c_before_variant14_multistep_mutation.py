@@ -189,20 +189,6 @@ def mutate(solution, rate=1.0):
     return mutated
 
 
-def mutate_repeated(solution):
-    passes = 1
-    roll = random.random()
-    if roll >= 0.9:
-        passes = 3
-    elif roll >= 0.6:
-        passes = 2
-
-    mutated = solution
-    for _ in range(passes):
-        mutated = mutate(mutated)
-    return mutated
-
-
 def tournament_pick(population, tournament_size=3):
     competitors = random.sample(population, min(tournament_size, len(population)))
     return max(competitors, key=lambda individual: individual.fitness)
@@ -255,7 +241,7 @@ def evolve(population, args):
 
     for _ in range(offspring_count):
         parent = random.choice(elites)
-        offspring = mutate_repeated(copy_solution(parent.chromosome))
+        offspring = mutate(copy_solution(parent.chromosome))
         population.individuals.append(Individual(offspring))
 
     population.generation += 1
