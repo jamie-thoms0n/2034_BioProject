@@ -115,10 +115,6 @@ def mutate_shape(shape, amount=6):
             r = random.randint(0, 255)
             g = random.randint(0, 255)
             b = random.randint(0, 255)
-        elif colour_type < 0.2:
-            r = clamp(r + random.randint(-5, 5), 0, 255)
-            g = clamp(g + random.randint(-5, 5), 0, 255)
-            b = clamp(b + random.randint(-5, 5), 0, 255)
         else:
             colour_amount = 6 if colour_type < 0.85 else 24
             channel = random.randrange(3)
@@ -131,7 +127,7 @@ def mutate_shape(shape, amount=6):
                 b = clamp(b + delta, 0, 255)
     else:
         alpha_amount = 4 if random.random() < 0.9 else 16
-        alpha = clamp(alpha + random.randint(-alpha_amount, alpha_amount), 5, 160)
+        alpha = clamp(alpha + random.randint(-alpha_amount, alpha_amount), 10, 160)
 
     return (x0, y0, x1, y1, x2, y2, r, g, b, alpha)
 
@@ -165,25 +161,17 @@ def swap_shape_order(solution):
     return solution
 
 
-def mutate(
-    solution,
-    rate=1.0,
-    amount=6,
-    deletion_probability=0.01,
-    add_multiplier=1.0,
-    replacement_probability=0.04,
-):
+def mutate(solution, rate=1.0):
     mutated = list(solution)
 
     if mutated and random.random() < rate:
         index = random.randrange(len(mutated))
-        mutated[index] = mutate_shape(mutated[index], amount=amount)
+        mutated[index] = mutate_shape(mutated[index])
 
-    add_probability = min(1.0, shape_add_probability(len(mutated)) * add_multiplier)
-    if len(mutated) < MAX_SHAPES and random.random() < add_probability:
+    if len(mutated) < MAX_SHAPES and random.random() < shape_add_probability(len(mutated)):
         mutated.append(random_shape())
 
-    if mutated and random.random() < replacement_probability:
+    if mutated and random.random() < 0.04:
         mutated[random.randrange(len(mutated))] = random_shape()
 
     if len(mutated) > 1 and random.random() < 0.12:
@@ -192,7 +180,7 @@ def mutate(
     if len(mutated) > 1 and random.random() < 0.06:
         mutated = swap_shape_order(mutated)
 
-    if len(mutated) > 1 and random.random() < deletion_probability:
+    if len(mutated) > 1 and random.random() < 0.01:
         del mutated[random.randrange(len(mutated))]
 
     if not mutated:
@@ -246,74 +234,14 @@ def elite_individuals(population, fraction=0.1):
     return sorted(population.individuals, key=lambda individual: individual.fitness, reverse=True)[:count]
 
 
-def evaluated_individuals(population):
-    return [individual for individual in population.individuals if individual.fitness is not None]
-
-
-def mutation_amount_for_parent(parent):
-    if parent.fitness < 0.80:
-        return 10
-    if parent.fitness < 0.87:
-        return 7
-    return 4
-
-
-def deletion_probability_for_parent(parent):
-    if parent.fitness < 0.85:
-        return 0.01
-    return 0.04
-
-
-def choose_parent(elites, population):
-    if random.random() < 0.9:
-        return random.choice(elites)
-    return random.choice(evaluated_individuals(population))
-
-
-def update_stagnation_state(population, generation):
-    current_best = population.current_best.fitness
-
-    if not hasattr(population, "_last_stagnation_check_best"):
-        population._last_stagnation_check_best = current_best
-    if not hasattr(population, "_stagnation_boost_until"):
-        population._stagnation_boost_until = 0
-
-    if generation % 50 == 0:
-        improvement = current_best - population._last_stagnation_check_best
-        if improvement < 0.002:
-            population._stagnation_boost_until = generation + 25
-        population._last_stagnation_check_best = current_best
-
-
-def stagnation_boost_active(population, generation):
-    return generation <= getattr(population, "_stagnation_boost_until", 0)
-
-
 def evolve(population, args):
     original_size = population.intended_size
     elites = elite_individuals(population)
     offspring_count = original_size * 2
-    generation = population.generation + 1
-    update_stagnation_state(population, generation)
-    boost = stagnation_boost_active(population, generation)
 
     for _ in range(offspring_count):
-        parent = choose_parent(elites, population)
-        amount = mutation_amount_for_parent(parent)
-        add_multiplier = 1.0
-        replacement_probability = 0.04
-        if boost:
-            amount += 2
-            add_multiplier = 1.25
-            replacement_probability = 0.06
-        deletion_probability = deletion_probability_for_parent(parent)
-        offspring = mutate(
-            copy_solution(parent.chromosome),
-            amount=amount,
-            deletion_probability=deletion_probability,
-            add_multiplier=add_multiplier,
-            replacement_probability=replacement_probability,
-        )
+        parent = random.choice(elites)
+        offspring = mutate(copy_solution(parent.chromosome))
         population.individuals.append(Individual(offspring))
 
     population.generation += 1
