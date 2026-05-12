@@ -29,10 +29,6 @@ def clamp(value, low, high):
 
 
 def random_shape():
-    return random_shape_for_stage("early")
-
-
-def random_normal_triangle():
     centre_x = random.randint(0, WIDTH - 1)
     centre_y = random.randint(0, HEIGHT - 1)
     size_type = random.random()
@@ -65,46 +61,6 @@ def random_normal_triangle():
     )
 
 
-def random_thin_triangle():
-    centre_x = random.randint(0, WIDTH - 1)
-    centre_y = random.randint(0, HEIGHT - 1)
-    radius = random.randint(10, 70)
-    x0 = clamp(centre_x + random.randint(-radius, radius), 0, WIDTH - 1)
-    y0 = clamp(centre_y + random.randint(-radius, radius), 0, HEIGHT - 1)
-    x1 = clamp(centre_x + random.randint(-radius, radius), 0, WIDTH - 1)
-    y1 = clamp(centre_y + random.randint(-radius, radius), 0, HEIGHT - 1)
-    midpoint_x = (x0 + x1) // 2
-    midpoint_y = (y0 + y1) // 2
-    offset = random.randint(1, 5)
-    x2 = clamp(midpoint_x + random.randint(-offset, offset), 0, WIDTH - 1)
-    y2 = clamp(midpoint_y + random.randint(-offset, offset), 0, HEIGHT - 1)
-
-    return (
-        x0,
-        y0,
-        x1,
-        y1,
-        x2,
-        y2,
-        random.randint(0, 255),
-        random.randint(0, 255),
-        random.randint(0, 255),
-        random.randint(30, 160),
-    )
-
-
-def random_shape_for_stage(stage):
-    thin_chance = 0.2
-    if stage == "middle":
-        thin_chance = 0.3
-    elif stage == "late":
-        thin_chance = 0.5
-
-    if random.random() < thin_chance:
-        return random_thin_triangle()
-    return random_normal_triangle()
-
-
 def initialise():
     shape_count = random.randint(MIN_INITIAL_SHAPES, MAX_INITIAL_SHAPES)
     return [random_shape() for _ in range(shape_count)]
@@ -123,52 +79,10 @@ def draw(solution):
     return image.convert("RGB")
 
 
-def evolution_stage(best_fitness):
-    if best_fitness < 0.75:
-        return "early"
-    if best_fitness < 0.85:
-        return "middle"
-    return "late"
-
-
-def stage_settings(stage):
-    if stage == "early":
-        return {
-            "amount": 8,
-            "add_scale": 1.15,
-            "replace": 0.04,
-            "delete": 0.01,
-            "move_order": 0.12,
-            "swap_order": 0.06,
-            "jump": 0.1,
-        }
-    if stage == "middle":
-        return {
-            "amount": 6,
-            "add_scale": 1.0,
-            "replace": 0.03,
-            "delete": 0.01,
-            "move_order": 0.12,
-            "swap_order": 0.06,
-            "jump": 0.08,
-        }
-    return {
-        "amount": 4,
-        "add_scale": 0.5,
-        "replace": 0.01,
-        "delete": 0.005,
-        "move_order": 0.16,
-        "swap_order": 0.08,
-        "jump": 0.02,
-    }
-
-
-def mutate_shape(shape, stage="early"):
-    settings = stage_settings(stage)
-    amount = settings["amount"]
+def mutate_shape(shape, amount=6):
     x0, y0, x1, y1, x2, y2, r, g, b, alpha = shape
 
-    if random.random() < settings["jump"]:
+    if random.random() < 0.08:
         amount *= 4
 
     mutation_type = random.random()
@@ -197,18 +111,12 @@ def mutate_shape(shape, stage="early"):
         y2 = clamp(y2 + dy, 0, HEIGHT - 1)
     elif mutation_type < 0.9:
         colour_type = random.random()
-        full_recolour_chance = 0.01 if stage == "late" else 0.05
-        if colour_type < full_recolour_chance:
+        if colour_type < 0.05:
             r = random.randint(0, 255)
             g = random.randint(0, 255)
             b = random.randint(0, 255)
         else:
-            if stage == "late":
-                colour_amount = 4 if colour_type < 0.9 else 12
-            elif stage == "middle":
-                colour_amount = 6 if colour_type < 0.85 else 24
-            else:
-                colour_amount = 8 if colour_type < 0.8 else 32
+            colour_amount = 6 if colour_type < 0.85 else 24
             channel = random.randrange(3)
             delta = random.randint(-colour_amount, colour_amount)
             if channel == 0:
@@ -232,11 +140,6 @@ def shape_add_probability(shape_count):
     return 0.03
 
 
-def staged_shape_add_probability(shape_count, stage):
-    base = shape_add_probability(shape_count)
-    return min(1.0, base * stage_settings(stage)["add_scale"])
-
-
 def move_shape_order(solution):
     if len(solution) < 2:
         return solution
@@ -258,31 +161,30 @@ def swap_shape_order(solution):
     return solution
 
 
-def mutate(solution, rate=1.0, stage="early"):
-    settings = stage_settings(stage)
+def mutate(solution, rate=1.0):
     mutated = list(solution)
 
     if mutated and random.random() < rate:
         index = random.randrange(len(mutated))
-        mutated[index] = mutate_shape(mutated[index], stage)
+        mutated[index] = mutate_shape(mutated[index])
 
-    if len(mutated) < MAX_SHAPES and random.random() < staged_shape_add_probability(len(mutated), stage):
-        mutated.append(random_shape_for_stage(stage))
+    if len(mutated) < MAX_SHAPES and random.random() < shape_add_probability(len(mutated)):
+        mutated.append(random_shape())
 
-    if mutated and random.random() < settings["replace"]:
-        mutated[random.randrange(len(mutated))] = random_shape_for_stage(stage)
+    if mutated and random.random() < 0.04:
+        mutated[random.randrange(len(mutated))] = random_shape()
 
-    if len(mutated) > 1 and random.random() < settings["move_order"]:
+    if len(mutated) > 1 and random.random() < 0.12:
         mutated = move_shape_order(mutated)
 
-    if len(mutated) > 1 and random.random() < settings["swap_order"]:
+    if len(mutated) > 1 and random.random() < 0.06:
         mutated = swap_shape_order(mutated)
 
-    if len(mutated) > 1 and random.random() < settings["delete"]:
+    if len(mutated) > 1 and random.random() < 0.01:
         del mutated[random.randrange(len(mutated))]
 
     if not mutated:
-        mutated.append(random_shape_for_stage(stage))
+        mutated.append(random_shape())
 
     return mutated
 
@@ -336,11 +238,10 @@ def evolve(population, args):
     original_size = population.intended_size
     elites = elite_individuals(population)
     offspring_count = original_size * 2
-    stage = evolution_stage(population.current_best.fitness)
 
     for _ in range(offspring_count):
         parent = random.choice(elites)
-        offspring = mutate(copy_solution(parent.chromosome), stage=stage)
+        offspring = mutate(copy_solution(parent.chromosome))
         population.individuals.append(Individual(offspring))
 
     population.generation += 1
