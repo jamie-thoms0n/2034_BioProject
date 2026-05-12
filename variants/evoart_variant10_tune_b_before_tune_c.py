@@ -57,7 +57,7 @@ def random_shape():
         random.randint(0, 255),
         random.randint(0, 255),
         random.randint(0, 255),
-        random.randint(30, 160),
+        random.randint(20, 120),
     )
 
 
@@ -79,7 +79,7 @@ def draw(solution):
     return image.convert("RGB")
 
 
-def mutate_shape(shape, amount=6):
+def mutate_shape(shape, amount=4):
     x0, y0, x1, y1, x2, y2, r, g, b, alpha = shape
 
     if random.random() < 0.08:
@@ -237,7 +237,7 @@ def elite_individuals(population, fraction=0.1):
 def evolve(population, args):
     original_size = population.intended_size
     elites = elite_individuals(population)
-    offspring_count = original_size * 2
+    offspring_count = original_size * 3
 
     for _ in range(offspring_count):
         parent = random.choice(elites)
