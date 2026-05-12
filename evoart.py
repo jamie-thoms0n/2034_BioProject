@@ -265,14 +265,17 @@ def evaluated_individuals(population):
     return [individual for individual in population.individuals if individual.fitness is not None]
 
 
+# CHANGE 1: updated thresholds to reflect current fitness range (was topping out at 0.90)
 def mutation_amount_for_parent(parent):
-    if parent.fitness < 0.80:
+    if parent.fitness < 0.82:
         return 10
-    if parent.fitness < 0.87:
+    if parent.fitness < 0.89:
         return 7
-    if parent.fitness < 0.90:
+    if parent.fitness < 0.93:
         return 4
-    return 3
+    if parent.fitness < 0.96:
+        return 3
+    return 2
 
 
 def replacement_probability_for_parent(parent):
@@ -281,14 +284,18 @@ def replacement_probability_for_parent(parent):
     return 0.04
 
 
+# CHANGE 2: detail mode now triggers earlier (0.87 instead of 0.90)
 def detail_mode_for_parent(parent, population):
-    return parent.fitness >= 0.90 or population.current_best.fitness >= 0.90
+    return parent.fitness >= 0.87 or population.current_best.fitness >= 0.87
 
 
+# CHANGE 3: higher deletion at high fitness to remove redundant/harmful shapes
 def deletion_probability_for_parent(parent):
-    if parent.fitness < 0.85:
-        return 0.01
-    return 0.04
+    if parent.fitness >= 0.90:
+        return 0.07
+    if parent.fitness >= 0.85:
+        return 0.04
+    return 0.01
 
 
 def choose_parent(elites, population):
@@ -297,6 +304,8 @@ def choose_parent(elites, population):
     return random.choice(evaluated_individuals(population))
 
 
+# CHANGE 4: stagnation check every 100 gens (was 50), boost for 50 gens (was 25)
+# threshold tightened to 0.003 improvement to avoid permanent boost at high fitness
 def update_stagnation_state(population, generation):
     current_best = population.current_best.fitness
 
@@ -305,10 +314,10 @@ def update_stagnation_state(population, generation):
     if not hasattr(population, "_stagnation_boost_until"):
         population._stagnation_boost_until = 0
 
-    if generation % 50 == 0:
+    if generation % 100 == 0:
         improvement = current_best - population._last_stagnation_check_best
-        if improvement < 0.002:
-            population._stagnation_boost_until = generation + 25
+        if improvement < 0.003:
+            population._stagnation_boost_until = generation + 50
         population._last_stagnation_check_best = current_best
 
 
@@ -319,7 +328,8 @@ def stagnation_boost_active(population, generation):
 def evolve(population, args):
     original_size = population.intended_size
     elites = elite_individuals(population)
-    offspring_count = original_size * 2
+    # CHANGE 5: 3x offspring instead of 2x for stronger selection pressure
+    offspring_count = original_size * 3
     generation = population.generation + 1
     update_stagnation_state(population, generation)
     boost = stagnation_boost_active(population, generation)
