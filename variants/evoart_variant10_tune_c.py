@@ -33,12 +33,12 @@ def random_shape():
     centre_y = random.randint(0, HEIGHT - 1)
     size_type = random.random()
 
-    if size_type < 0.75:
-        radius = random.randint(3, 18)
-    elif size_type < 0.95:
-        radius = random.randint(15, 40)
+    if size_type < 0.7:
+        radius = random.randint(4, 25)
+    elif size_type < 0.9:
+        radius = random.randint(20, 60)
     else:
-        radius = random.randint(35, 90)
+        radius = random.randint(50, 130)
 
     x0 = clamp(centre_x + random.randint(-radius, radius), 0, WIDTH - 1)
     y0 = clamp(centre_y + random.randint(-radius, radius), 0, HEIGHT - 1)
