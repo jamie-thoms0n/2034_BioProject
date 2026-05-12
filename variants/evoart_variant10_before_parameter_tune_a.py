@@ -229,7 +229,7 @@ def copy_solution(solution):
     return list(solution)
 
 
-def elite_individuals(population, fraction=0.1):
+def elite_individuals(population, fraction=0.2):
     count = max(1, round(len(population.individuals) * fraction))
     return sorted(population.individuals, key=lambda individual: individual.fitness, reverse=True)[:count]
 
@@ -237,7 +237,7 @@ def elite_individuals(population, fraction=0.1):
 def evolve(population, args):
     original_size = population.intended_size
     elites = elite_individuals(population)
-    offspring_count = original_size * 3
+    offspring_count = original_size
 
     for _ in range(offspring_count):
         parent = random.choice(elites)

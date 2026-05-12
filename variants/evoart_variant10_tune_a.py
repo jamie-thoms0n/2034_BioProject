@@ -237,7 +237,7 @@ def elite_individuals(population, fraction=0.1):
 def evolve(population, args):
     original_size = population.intended_size
     elites = elite_individuals(population)
-    offspring_count = original_size * 3
+    offspring_count = original_size * 2
 
     for _ in range(offspring_count):
         parent = random.choice(elites)
